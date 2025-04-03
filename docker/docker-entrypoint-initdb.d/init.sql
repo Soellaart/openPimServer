@@ -202,6 +202,7 @@ CREATE TABLE public.channels (
     visible jsonb,
     config jsonb NOT NULL,
     mappings jsonb NOT NULL,
+    headerMappings jsonb NOT NULL,
     runtime jsonb NOT NULL,
     id integer DEFAULT nextval('public.channels_id_seq'::regclass) NOT NULL,
     "tenantId" character varying(50) NOT NULL,
@@ -909,7 +910,7 @@ COPY public.attributes (identifier, name, "order", valid, visible, relations, "l
 -- Data for Name: channels; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.channels (identifier, name, active, type, valid, visible, config, mappings, runtime, id, "tenantId", "createdBy", "updatedBy", "createdAt", "updatedAt", "deletedAt") FROM stdin;
+COPY public.channels (identifier, name, active, type, valid, visible, config, mappings, headerMappings, runtime, id, "tenantId", "createdBy", "updatedBy", "createdAt", "updatedAt", "deletedAt") FROM stdin;
 \.
 
 

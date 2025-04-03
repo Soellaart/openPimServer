@@ -14,6 +14,7 @@ export class Channel extends Base {
   public visible!: any
   public config!: any
   public mappings!: any
+  public headerMappings!: any
   public runtime!: any
   public parentId!: any
   public static applyScope(context: Context) {
@@ -73,6 +74,10 @@ export function init(sequelize: Sequelize):void {
         allowNull: false,
       },
       mappings: {
+        type: DataTypes.JSONB,
+        allowNull: false,
+      },
+      headerMappings: {
         type: DataTypes.JSONB,
         allowNull: false,
       },

@@ -54,7 +54,7 @@ export class ChannelsManager {
                 whereExpression.channels[channel.identifier] = { status: 1 }
                 const result: any = await Item.findAll({
                     attributes: [
-                        [fn('count', '*'), 'count']
+                            [fn('count', '*'), 'count']
                     ],
                     where: whereExpression
                 })
