@@ -202,7 +202,7 @@ CREATE TABLE public.channels (
     visible jsonb,
     config jsonb NOT NULL,
     mappings jsonb NOT NULL,
-    headerMappings jsonb NOT NULL,
+    headerMappings jsonb,
     runtime jsonb NOT NULL,
     id integer DEFAULT nextval('public.channels_id_seq'::regclass) NOT NULL,
     "tenantId" character varying(50) NOT NULL,
