@@ -13,6 +13,7 @@ export class Channel extends Base {
   public valid!: any
   public visible!: any
   public config!: any
+  public remoteFilename!: string
   public mappings!: any
   public headerMappings!: any
   public runtime!: any

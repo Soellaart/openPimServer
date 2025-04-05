@@ -387,6 +387,45 @@ export abstract class ChannelHandler {
       return this.a[char] || char; 
     }).join("")
   }
+  public mapExternalRowToLocalAttributes(
+    channel: Channel,
+    rowData: { [csvHeader: string]: any }
+  ): { [attrName: string]: any } {
+    const result: { [attrName: string]: any } = {}
+    if (!channel.config.headerMapping) {
+      return result
+    }
+    for (let externalHeader in channel.config.headerMapping) {
+      const localAttr = channel.config.headerMapping[externalHeader]
+      if (rowData.hasOwnProperty(externalHeader)) {
+        result[localAttr] = rowData[externalHeader]
+      }
+    }
+    return result
+  }
+
+  public mapLocalAttributesToExternalRow(
+    channel: Channel,
+    item: Item
+  ): { [csvHeader: string]: any } {
+    const result: { [csvHeader: string]: any } = {}
+    if (!channel.config.headerMapping) return result
+
+    const invertMap: { [localAttr: string]: string } = {}
+    for (let externalHeader in channel.config.headerMapping) {
+      const localAttr = channel.config.headerMapping[externalHeader]
+      invertMap[localAttr] = externalHeader
+    }
+
+    for (let localAttr in item.values) {
+      if (invertMap[localAttr]) {
+        let externalHeader = invertMap[localAttr]
+        result[externalHeader] = item.values[localAttr]
+      }
+    }
+
+    return result
+  }
 }
 
 export interface ChannelCategory {
