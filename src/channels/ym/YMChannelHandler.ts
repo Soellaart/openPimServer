@@ -1,3 +1,16 @@
+/**
+ * YMChannelHandler class processes channels of type YML (Yandex Market Language).
+ * It builds and exports product catalogs in YML format based on channel configuration,
+ * including shop metadata, categories, and item offers.
+ *
+ * Key functionalities:
+ * - Generates YML headers (name, company, url, currencies, delivery options).
+ * - Processes product categories from a specified root item.
+ * - Iterates over items matching the channel filter and maps them to offers.
+ * - Applies variant processing and attribute mapping.
+ * - Outputs a YML file, optionally executes a command with the generated file.
+ */
+
 import { Channel, ChannelExecution } from "../../models/channels"
 import { ChannelAttribute, ChannelCategory, ChannelHandler } from "../ChannelHandler"
 import logger from "../../logger"
@@ -72,35 +85,35 @@ export class YMChannelHandler extends ChannelHandler {
                     if (fs.existsSync(fileName)) {
                         const fm = FileManager.getInstance()
                         fileName = await fm.saveChannelFile(channel.tenantId, channel.id, chanExec, fileName)
-                        context.log += '\nсоздан YML файл'
+                        context.log += '\nYML file created'
                     }
 
                     if (channel.config.extCmd) {
                         const cmd = channel.config.extCmd.replace('{file}', fileName)
 
                         logger.debug('Starting [' + cmd + ']')
-                        context.log += '\nЗапускается ' + cmd
+                        context.log += '\nLaunching ' + cmd
                         const result: any = await this.asyncExec(cmd)
-                        context.log += result.stdout + (result.stderr ? "\nERRORS:\n" + result.stderr : "") 
+                        context.log += result.stdout + (result.stderr ? "\nERRORS:\n" + result.stderr : "")
                         if (result.code !== 0) {
                             context.result = 3
-                            context.log += '\nОшибка запуска: ' + result.code
+                            context.log += '\nExecution error: ' + result.code
                         }
                     }
                 } else {
                     context.result = 3
-                    if (!name) context.log += 'Не задан name в заголовоке YML файла'
-                    if (!company) context.log += 'Не задан company в заголовоке YML файла'
-                    if (!url) context.log += 'Не задан url в заголовоке YML файла'
-                    if (!currency1) context.log += 'Не задана валюта в заголовоке YML файла'
+                    if (!name) context.log += 'Missing name in YML file header'
+                    if (!company) context.log += 'Missing company in YML file header'
+                    if (!url) context.log += 'Missing url in YML file header'
+                    if (!currency1) context.log += 'Missing currency in YML file header'
                 }
             } else {
                 context.result = 3
-                context.log += 'Не задан заголовок YML файла'
+                context.log += 'YML file header not configured'
             }
         } catch (err:any) {
             context.result = 3
-            context.log += "Ошибка: " + err.message
+            context.log += "Error: " + err.message
             logger.error('Failed to run YM Handler', err)
         } finally {
             await this.finishExecution(channel, chanExec, context.result, context.log)
@@ -117,7 +130,7 @@ export class YMChannelHandler extends ChannelHandler {
             where: { tenantId: channel.tenantId, channels: query},
             order: [['parentIdentifier', 'ASC'], ['id', 'ASC']]
         })
-        context.log += 'Найдено ' + items.count +' записей для обработки \n\n'
+        context.log += 'Found ' + items.count + ' records to process \n\n'
         for (let i = 0; i < items.rows.length; i++) {
             const item = items.rows[i];
             await this.processItem(channel, item, offers, language, context)
@@ -126,7 +139,7 @@ export class YMChannelHandler extends ChannelHandler {
     }
 
     private async processItem(channel: Channel, item: Item, offers: any[], language: string, context: JobContext) {
-        context.log += 'Обрабатывается запись с идентификатором: ' + item.identifier +'\n'
+        context.log += 'Processing record with identifier: ' + item.identifier + '\n'
 
         for (const categoryId in channel.mappings) {
             const categoryConfig = channel.mappings[categoryId]
@@ -185,7 +198,7 @@ export class YMChannelHandler extends ChannelHandler {
     }
 
     async processItemInCategory(channel: Channel, item: Item, offers: any[], categoryConfig: any, language: string, context: JobContext, variant: any) {
-        context.log += 'Найдена категория "' + categoryConfig.name +'" для записи с идентификатором: ' + item.identifier + '\n'
+        context.log += 'Category "' + categoryConfig.name + '" found for record with identifier: ' + item.identifier + '\n'
 
         const data = item.channels[channel.identifier]
         data.category = categoryConfig.id
@@ -194,7 +207,7 @@ export class YMChannelHandler extends ChannelHandler {
         const idConfig = categoryConfig.attributes.find((elem:any) => elem.id === 'id')
         const id = await this.getValueByMapping2(channel, idConfig, item, language, variant)
         if (!id) {
-            const msg = 'Не введена конфигурация для "id" для категории: ' + categoryConfig.name
+            const msg = 'No configuration provided for "id" for category: ' + categoryConfig.name
             context.log += msg
             this.reportError(channel, item, msg)
             return
@@ -306,13 +319,13 @@ export class YMChannelHandler extends ChannelHandler {
             }
 
             offers.push(offer)
-            context.log += 'Запись с идентификатором: ' + item.identifier + ' обработана успешно.\n'
+            context.log += 'Record with identifier: ' + item.identifier + ' processed successfully.\n'
             data.status = 2
             data.message = ''
             data.syncedAt = Date.now()
             item.changed('channels', true)
         } catch (err:any) {
-            const msg = 'Ошибка обработки записи: ' + err.message
+            const msg = 'Error processing record: ' + err.message
             context.log += msg
             this.reportError(channel, item, msg)
         }
@@ -344,30 +357,30 @@ export class YMChannelHandler extends ChannelHandler {
     private async processCategories(channel: Channel, yml: any, language: string, context: JobContext) {
         if (!channel.config.ymCategoryFrom) {
             context.result = 3
-            context.log += "Не задан объект с которого начать генерацию категорий"
+            context.log += "Starting object for category generation not specified"
             return
         }
         if (!channel.config.ymCategoryTypes || channel.config.ymCategoryTypes.length === 0) {
             context.result = 3
-            context.log += "Не заданы типы для генерации категорий"
+            context.log += "Category types for generation not specified"
             return
         }
         if (!channel.config.ymCategoryAttributes || channel.config.ymCategoryAttributes.length === 0) {
             context.result = 3
-            context.log += "Не заданы id и Названия для категорий"
+            context.log += "Category IDs and names not specified"
             return
         }
 
         const idConfig = channel.config.ymCategoryAttributes.find((elem:any) => elem.id === 'id')
         if (!idConfig) {
             context.result = 3
-            context.log += "Не задано id для категорий"
+            context.log += "Category ID not specified"
             return
         }
         const nameConfig = channel.config.ymCategoryAttributes.find((elem:any) => elem.id === 'name')
         if (!nameConfig) {
             context.result = 3
-            context.log += "Не задано название для категорий"
+            context.log += "Category name not specified"
             return
         }
         
@@ -377,7 +390,7 @@ export class YMChannelHandler extends ChannelHandler {
         const itemFrom = await Item.findOne({ where: { tenantId: channel.tenantId, id: channel.config.ymCategoryFrom }})
         if (!itemFrom) {
             context.result = 3
-            context.log += "Не найдет объект с которого начинать по id: " + channel.config.ymCategoryFrom
+            context.log += "Starting object not found by ID: " + channel.config.ymCategoryFrom
             return
         }
 
@@ -412,14 +425,14 @@ export class YMChannelHandler extends ChannelHandler {
             const id = await this.getValueByMapping(channel, idConfig, item, language)
             if (!id) {
                 context.result = 3
-                context.log += "Не найдет id для категории с идентификатором: " + item.identifier
+                context.log += "ID not found for category with identifier: " + item.identifier
                 return
             }
 
             const name = await this.getValueByMapping(channel, nameConfig, item, language)
             if (!name) {
                 context.result = 3
-                context.log += "Не найдено название для категории с идентификатором: " + item.identifier
+                context.log += "Name not found for category with identifier: " + item.identifier
                 return
             }
 
