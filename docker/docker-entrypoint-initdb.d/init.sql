@@ -202,7 +202,6 @@ CREATE TABLE public.channels (
     visible jsonb,
     config jsonb NOT NULL,
     mappings jsonb NOT NULL,
-    headerMappings jsonb,
     runtime jsonb NOT NULL,
     id integer DEFAULT nextval('public.channels_id_seq'::regclass) NOT NULL,
     "tenantId" character varying(50) NOT NULL,
@@ -910,7 +909,7 @@ COPY public.attributes (identifier, name, "order", valid, visible, relations, "l
 -- Data for Name: channels; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.channels (identifier, name, active, type, valid, visible, config, mappings, headerMappings, runtime, id, "tenantId", "createdBy", "updatedBy", "createdAt", "updatedAt", "deletedAt") FROM stdin;
+COPY public.channels (identifier, name, active, type, valid, visible, config, mappings, runtime, id, "tenantId", "createdBy", "updatedBy", "createdAt", "updatedAt", "deletedAt") FROM stdin;
 \.
 
 
@@ -1437,8 +1436,23 @@ ALTER TABLE ONLY public.group_attribute
 -- v1.5
 --
 
-ALTER TABLE "actions" 
+ALTER TABLE public.actions
     ADD COLUMN "order" integer;
 
-ALTER TABLE "savedSearch" 
+ALTER TABLE public."savedSearch"
     ADD COLUMN "entity" varchar(50);
+
+--
+-- v1.5.1
+--
+ALTER TABLE public."channels"
+    ADD COLUMN headermappings jsonb;
+
+ALTER TABLE public."channels"
+    ADD COLUMN "order" integer;
+
+ALTER TABLE public."channels"
+    ADD COLUMN "group" boolean;
+
+ALTER TABLE public."channels"
+    ADD COLUMN "parentId" integer;

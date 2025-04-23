@@ -25,6 +25,12 @@ services:
   
   pgadmin:
     image: dpage/pgadmin4:6.5
+    environment:
+      PGADMIN_DEFAULT_EMAIL: pim@pim.nl
+      PGADMIN_DEFAULT_PASSWORD: sa
     restart: always
     ports:
       - 8080:80
+
+volumes:
+  pgadmin4-data:

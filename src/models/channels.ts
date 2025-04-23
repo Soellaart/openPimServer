@@ -15,7 +15,7 @@ export class Channel extends Base {
   public config!: any
   public remoteFilename!: string
   public mappings!: any
-  public headerMappings!: any
+  public headermappings!: any
   public runtime!: any
   public parentId!: any
   public static applyScope(context: Context) {
@@ -78,7 +78,7 @@ export function init(sequelize: Sequelize):void {
         type: DataTypes.JSONB,
         allowNull: false,
       },
-      headerMappings: {
+      headermappings: {
         type: DataTypes.JSONB,
         allowNull: false,
       },

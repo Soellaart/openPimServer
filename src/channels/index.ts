@@ -10,7 +10,7 @@ import { WBNewChannelHandler } from "./wb/WBNewChannelHandler"
 import { OzonChannelHandler } from "./ozon/OzonChannelHandler"
 import { YMChannelHandler } from "./ym/YMChannelHandler"
 import Context from "../context"
-import { FTPChannelHandler } from '@/channels/ftp/FTPChannelHandler';
+import { FTPChannelHandler } from './ftp/FTPChannelHandler';
 
 export class ChannelsManager {
     private tenantId: string
