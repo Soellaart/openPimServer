@@ -32,6 +32,7 @@ export async function initModels() {
     if (process.env.OPENPIM_DATABASE_OPTIONS) {
         dialectOptions = JSON.parse(process.env.OPENPIM_DATABASE_OPTIONS)
     }
+
     sequelize = new Sequelize(
         <string>process.env.DATABASE_NAME,
         <string>process.env.DATABASE_USER,
@@ -55,6 +56,15 @@ export async function initModels() {
             evict: 10000
         }
     })
+
+  // test database connection
+  try {
+    await sequelize.authenticate()
+    logger.info('Connection has been established successfully.')
+  } catch (error) {
+    logger.error('Unable to connect to the database:', error)
+    throw error
+  }
 
     users.init(sequelize)
     types.init(sequelize)
