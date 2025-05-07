@@ -1,277 +1,296 @@
-import { Type } from './types'
-import { AttrGroup, Attribute } from './attributes'
-import { Relation } from './relations'
-import { Language } from './languages'
-import { sequelize } from '../models'
-import { Role, User } from './users'
-import { Action } from './actions'
-import { Dashboard } from './dashboards'
-import { WhereOptions } from 'sequelize'
-import { Channel } from './channels'
-import { ImportConfig } from './importConfigs'
-import { cleaningDatabase } from '../resolvers/utils/cleaningDatabase'
+import { Type } from './types';
+import { AttrGroup, Attribute } from './attributes';
+import { Relation } from './relations';
+import { Language } from './languages';
+import { Role, User } from './users';
+import { Action } from './actions';
+import { Dashboard } from './dashboards';
+import { WhereOptions } from 'sequelize';
+import { Channel } from './channels';
+import { ImportConfig } from './importConfigs';
+import { cleaningDatabase } from '../resolvers/utils/cleaningDatabase';
 
-import logger from '../logger'
-import NodeCache from 'node-cache'
-import { FileManager } from '../media/FileManager'
-import * as fs from 'fs'
+import logger from '../logger';
+import NodeCache from 'node-cache';
+import { FileManager } from '../media/FileManager';
+import * as fs from 'fs';
 import i18next from '../i18n';
-import fetch from 'node-fetch'
+import fetch from 'node-fetch';
 import { v4 as uuidv4 } from 'uuid';
 
 export class ModelManager {
-    private typeRoot: TreeNode<void> = new TreeNode<void>()
-    private tenantId: string
-    private attrGroups: AttrGroupWrapper[] = []
-    private relAttributes: Attribute[] = []
-    private relations: Relation[] = []
-    private languages: Language[] = []
-    private channels: Channel[] = []
-    private importConfigs: ImportConfig[] = []
-    private actions: Action[] = []
-    private dashboards: Dashboard[] = []
-    private actionsCache: any = {}
-    private roles: Role[] = []
-    private users: UserWrapper[] = []
-    private cache = new NodeCache({ useClones: false })
-    private static serverConfig: any = null
+  private typeRoot: TreeNode<void> = new TreeNode<void>();
+  private tenantId: string;
+  private attrGroups: AttrGroupWrapper[] = [];
+  private relAttributes: Attribute[] = [];
+  private relations: Relation[] = [];
+  private languages: Language[] = [];
+  private channels: Channel[] = [];
+  private importConfigs: ImportConfig[] = [];
+  private actions: Action[] = [];
+  private dashboards: Dashboard[] = [];
+  private actionsCache: any = {};
+  private roles: Role[] = [];
+  private users: UserWrapper[] = [];
+  private cache = new NodeCache({ useClones: false });
+  private static serverConfig: any = null;
 
-    public constructor(tenantId: string) { this.tenantId = tenantId }
+  public constructor(tenantId: string) {
+    this.tenantId = tenantId;
+  }
 
-    public getTenantId() { return this.tenantId }
+  public getTenantId() {
+    return this.tenantId;
+  }
 
-    public getRoot() { return this.typeRoot }
-    public resetRoot() {
-        this.typeRoot = new TreeNode<void>()
-        return this.typeRoot
+  public getRoot() {
+    return this.typeRoot;
+  }
+  public resetRoot() {
+    this.typeRoot = new TreeNode<void>();
+    return this.typeRoot;
+  }
+
+  public getRoles() {
+    return this.roles;
+  }
+  public getUsers() {
+    return this.users;
+  }
+
+  public getCache() {
+    return this.cache;
+  }
+
+  public getLanguages(): Language[] {
+    return this.languages;
+  }
+
+  public getChannels(): Channel[] {
+    return this.channels;
+  }
+
+  public getImportConfigs(): ImportConfig[] {
+    return this.importConfigs;
+  }
+
+  public getActions(): Action[] {
+    return this.actions;
+  }
+
+  public getDashboards(): Dashboard[] {
+    return this.dashboards;
+  }
+
+  public getActionsCache(): any {
+    return this.actionsCache;
+  }
+
+  public getRelations(): Relation[] {
+    return this.relations;
+  }
+
+  public getRelationAttributes(): Attribute[] {
+    return this.relAttributes;
+  }
+
+  public dumpRelations() {
+    return this.relations.map((rel) => {
+      const data = { internalId: 0 };
+      Object.assign(data, rel.get({ plain: true }));
+      data.internalId = rel.id;
+      return data;
+    });
+  }
+
+  public getRelationById(id: number): Relation | undefined {
+    return this.relations.find((rel) => rel.id === id);
+  }
+
+  public getRelationByIdentifier(identifier: string): Relation | undefined {
+    return this.relations.find((rel) => rel.identifier === identifier);
+  }
+
+  public getTypes(): any {
+    const result: any[] = [];
+    this.dumpChildren(result, this.typeRoot.getChildren());
+    return result;
+  }
+
+  public static getServerConfig(): any {
+    if (!this.serverConfig) {
+      const filesRoot = FileManager.getInstance().getFilesRoot();
+      const configFile = filesRoot + '/server.config';
+      if (fs.existsSync(configFile)) {
+        this.serverConfig = JSON.parse(fs.readFileSync(configFile).toString());
+      } else {
+        this.serverConfig = {};
+      }
     }
+    return this.serverConfig;
+  }
 
-    public getRoles() { return this.roles }
-    public getUsers() { return this.users }
+  public async reloadModelRemotely(id: number, parentId: number | null, entity: string, del: boolean, xToken: string | null) {
+    this.reloadModelRemotelyProcess(id, parentId, entity, del, xToken);
+  }
 
-    public getCache() { return this.cache }
-
-    public getLanguages(): Language[] {
-        return this.languages
-    }
-
-    public getChannels(): Channel[] {
-        return this.channels
-    }
-
-    public getImportConfigs(): ImportConfig[] {
-        return this.importConfigs
-    }
-
-    public getActions(): Action[] {
-        return this.actions
-    }
-
-    public getDashboards(): Dashboard[] {
-        return this.dashboards
-    }
-
-    public getActionsCache(): any {
-        return this.actionsCache
-    }
-
-    public getRelations(): Relation[] {
-        return this.relations
-    }
-
-    public getRelationAttributes(): Attribute[] {
-        return this.relAttributes
-    }
-
-    public dumpRelations() {
-        return this.relations.map((rel) => {
-            const data = { internalId: 0 }
-            Object.assign(data, rel.get({ plain: true }))
-            data.internalId = rel.id
-            return data
-        })
-    }
-
-    public getRelationById(id: number): Relation | undefined {
-        return this.relations.find((rel) => rel.id === id)
-    }
-
-    public getRelationByIdentifier(identifier: string): Relation | undefined {
-        return this.relations.find((rel) => rel.identifier === identifier)
-    }
-
-    public getTypes(): any {
-        const result: any[] = []
-        this.dumpChildren(result, this.typeRoot.getChildren())
-        return result
-    }
-
-    public static getServerConfig(): any {
-        if (!this.serverConfig) {
-            const filesRoot = FileManager.getInstance().getFilesRoot()
-            const configFile = filesRoot + '/server.config'
-            if (fs.existsSync(configFile)) {
-                this.serverConfig = JSON.parse(fs.readFileSync(configFile).toString())
-            } else {
-                this.serverConfig = {}
-            }
+  public async reloadModelRemotelyProcess(id: number, parentId: number | null, entity: string, del: boolean, xToken: string | null) {
+    const servers = process.env.OPENPIM_SERVERS;
+    const serverUuid = ModelsManager.getInstance().getServerUuid();
+    if (servers && servers.length && xToken) {
+      const serversArr = servers.split(';');
+      for (let i = 0; i < serversArr.length; i++) {
+        const server = serversArr[i];
+        const request = `query { reloadModelRemotely( id: "${id}", parentId: "${parentId}", serverUuid: "${serverUuid}", entity: ${entity}, del: ${del} ) }`;
+        const query = { query: request };
+        logger.debug(`Reloading model remotely for server ${server}`);
+        try {
+          const res = await fetch(server + '/graphql', {
+            method: 'post',
+            body: JSON.stringify(query),
+            headers: { 'Content-Type': 'application/json', 'x-token': xToken },
+          });
+          const json = await res.json();
+          logger.debug(JSON.stringify(json));
+        } catch (err) {
+          logger.error(`Failed to reload model remotely for server ${server}`);
+          logger.error(err);
         }
-        return this.serverConfig
+      }
     }
+  }
 
-    public async reloadModelRemotely(id: number, parentId: number | null, entity: string, del: boolean, xToken: string | null) {
-        this.reloadModelRemotelyProcess(id, parentId, entity, del, xToken)
-    }   
+  private dumpChildren(arr: any[], children: TreeNode<Type>[]) {
+    for (var i = 0; i < children.length; i++) {
+      const child = children[i];
+      const data = { children: [], internalId: 0, link: 0, name: '', icon: '', iconColor: '' };
+      Object.assign(data, child.getValue()?.get({ plain: true }));
+      data.internalId = child.getValue()!.id;
+      if (data.link !== 0) {
+        const linkParent = this.getTypeById(data.link);
+        const linkType = <Type>linkParent!.getValue();
+        data.name = linkType.name;
+        data.icon = linkType.icon;
+        data.iconColor = linkType.iconColor;
+      }
+      arr.push(data);
+      // console.log(data)
+      this.dumpChildren(data.children, child.getChildren());
+    }
+  }
 
-    public async reloadModelRemotelyProcess(id: number, parentId: number | null, entity: string, del: boolean, xToken: string | null) {
-        const servers = process.env.OPENPIM_SERVERS
-        const serverUuid = ModelsManager.getInstance().getServerUuid()
-        if (servers && servers.length && xToken) {
-            const serversArr = servers.split(';')
-            for (let i = 0; i < serversArr.length; i++) {
-                const server = serversArr[i]
-                const request = `query { reloadModelRemotely( id: "${id}", parentId: "${parentId}", serverUuid: "${serverUuid}", entity: ${entity}, del: ${del} ) }`
-                const query = { query: request }
-                logger.debug(`Reloading model remotely for server ${server}`)
-                try {
-                    const res = await fetch(server + '/graphql', {
-                        method: 'post',
-                        body: JSON.stringify(query),
-                        headers: { 'Content-Type': 'application/json', 'x-token': xToken },
-                    })
-                    const json = await res.json()
-                    logger.debug(JSON.stringify(json))
-                } catch (err) {
-                    logger.error(`Failed to reload model remotely for server ${server}`)
-                    logger.error(err)
-                }
-            }
+  public addType(parentId: number, type: Type) {
+    if (parentId) {
+      const parent = this.getTypeById(parentId);
+      if (parent) {
+        const node = new TreeNode<Type>(type, parent);
+        parent.getChildren().push(node);
+      } else {
+        logger.error('Failed to find parent by id: ' + parentId + ' in manager: ' + this.tenantId);
+      }
+    } else {
+      const node = new TreeNode<Type>(type, this.typeRoot);
+      this.typeRoot.getChildren().push(node);
+    }
+  }
+
+  public getTypeById(id: number): TreeNode<any> | null {
+    return this.findNode(id, this.typeRoot.getChildren(), (id, item) => item.getValue().id === id);
+  }
+
+  public getTypeByLinkId(id: number): TreeNode<any> | null {
+    return this.findNode(id, this.typeRoot.getChildren(), (id, item) => item.getValue().link === id);
+  }
+
+  public getTypeByIdentifier(identifier: string): TreeNode<any> | null {
+    return this.findNode(identifier, this.typeRoot.getChildren(), (id, item) => item.getValue().identifier === identifier);
+  }
+
+  private findNode(id: any, children: TreeNode<any>[], comparator: (id: any, item: TreeNode<any>) => boolean): TreeNode<any> | null {
+    for (var i = 0; i < children.length; i++) {
+      const item = children[i];
+      // console.log('check-', item.getValue().id, typeof item.getValue().id, id, typeof id)
+      if (comparator(id, item)) {
+        return item;
+      } else {
+        const found = this.findNode(id, item.getChildren(), comparator);
+        if (found) {
+          return found;
         }
+      }
     }
+    return null;
+  }
 
-    private dumpChildren(arr: any[], children: TreeNode<Type>[]) {
-        for (var i = 0; i < children.length; i++) {
-            const child = children[i]
-            const data = { children: [], internalId: 0, link: 0, name: '', icon: '', iconColor: '' }
-            Object.assign(data, child.getValue()?.get({ plain: true }))
-            data.internalId = child.getValue()!.id
-            if (data.link !== 0) {
-                const linkParent = this.getTypeById(data.link)
-                const linkType = <Type>linkParent!.getValue()
-                data.name = linkType.name
-                data.icon = linkType.icon
-                data.iconColor = linkType.iconColor
-            }
-            arr.push(data)
-            // console.log(data)
-            this.dumpChildren(data.children, child.getChildren())
+  public getAttrGroups(): AttrGroupWrapper[] {
+    return this.attrGroups;
+  }
+
+  public getAttributesInfo(): any[] {
+    const result: any[] = [];
+    let attrId = Date.now();
+    this.attrGroups.forEach((grp) => {
+      const attributes: any[] = [];
+      const group: { attributes: any[]; internalId: number; group: boolean; Attributes?: [] } = {
+        attributes: attributes,
+        internalId: 0,
+        group: true,
+        Attributes: [],
+      };
+      Object.assign(group, grp.getGroup().get({ plain: true }));
+      delete group.Attributes;
+      group.internalId = grp.getGroup().id;
+      group.attributes = grp.getAttributes().map((attr) => {
+        const data: { internalId: number; group: boolean; id: number; GroupsAttributes?: string } = {
+          internalId: 0,
+          group: false,
+          id: 0,
+          GroupsAttributes: '',
+        };
+        Object.assign(data, attr.get({ plain: true }));
+        data.internalId = attr.id;
+        data.id = attrId++; // we have to assign unique id
+
+        delete data.GroupsAttributes;
+        return data;
+      });
+      result.push(group);
+    });
+    return result;
+  }
+
+  public getAttribute(id: number): { attr: Attribute; groups: AttrGroup[] } | null {
+    const groups: AttrGroup[] = [];
+    let attr: Attribute | null = null;
+    for (var i = 0; i < this.attrGroups.length; i++) {
+      const group = this.attrGroups[i];
+      const attributes = group.getAttributes();
+      for (var j = 0; j < attributes.length; j++) {
+        if (attributes[j].id === id) {
+          attr = attributes[j];
+          groups.push(group.getGroup());
         }
+      }
     }
+    return attr ? { attr: attr, groups: groups } : null;
+  }
 
-    public addType(parentId: number, type: Type) {
-        if (parentId) {
-            const parent = this.getTypeById(parentId)
-            if (parent) {
-                const node = new TreeNode<Type>(type, parent)
-                parent.getChildren().push(node)
-            } else {
-                logger.error('Failed to find parent by id: ' + parentId + ' in manager: ' + this.tenantId)
-            }
-        } else {
-            const node = new TreeNode<Type>(type, this.typeRoot)
-            this.typeRoot.getChildren().push(node)
+  public getAttributeByIdentifier(identifier: string, firstOnly: boolean = false): { attr: Attribute; groups: AttrGroup[] } | null {
+    const groups: AttrGroup[] = [];
+    let attr: Attribute | null = null;
+    for (var i = 0; i < this.attrGroups.length; i++) {
+      const group = this.attrGroups[i];
+      const attributes = group.getAttributes();
+      for (var j = 0; j < attributes.length; j++) {
+        if (attributes[j].identifier === identifier) {
+          attr = attributes[j];
+          if (firstOnly) return { attr: attr, groups: [group.getGroup()] };
+          groups.push(group.getGroup());
         }
+      }
     }
-
-    public getTypeById(id: number): TreeNode<any> | null {
-        const res = this.findNode(id, this.typeRoot.getChildren(), (id, item) => item.getValue().id === id)
-        return res
-    }
-
-    public getTypeByLinkId(id: number): TreeNode<any> | null {
-        const res = this.findNode(id, this.typeRoot.getChildren(), (id, item) => item.getValue().link === id)
-        return res
-    }
-
-    public getTypeByIdentifier(identifier: string): TreeNode<any> | null {
-        return this.findNode(identifier, this.typeRoot.getChildren(), (id, item) => item.getValue().identifier === identifier)
-    }
-
-    private findNode(id: any, children: TreeNode<any>[], comparator: ((id: any, item: TreeNode<any>) => boolean)): TreeNode<any> | null {
-        for (var i = 0; i < children.length; i++) {
-            const item = children[i]
-            // console.log('check-', item.getValue().id, typeof item.getValue().id, id, typeof id)
-            if (comparator(id, item)) {
-                return item
-            } else {
-                const found = this.findNode(id, item.getChildren(), comparator)
-                if (found) {
-                    return found
-                }
-            }
-        }
-        return null
-    }
-
-    public getAttrGroups(): AttrGroupWrapper[] {
-        return this.attrGroups
-    }
-
-    public getAttributesInfo(): any[] {
-        const result: any[] = []
-        let attrId = Date.now()
-        this.attrGroups.forEach((grp) => {
-            const attributes: any[] = []
-            const group: { attributes: any[], internalId: number, group: boolean, Attributes?: [] } = { attributes: attributes, internalId: 0, group: true, Attributes: [] }
-            Object.assign(group, grp.getGroup().get({ plain: true }))
-            delete group.Attributes
-            group.internalId = grp.getGroup().id
-            group.attributes = grp.getAttributes().map(attr => {
-                const data: { internalId: number, group: boolean, id: number, GroupsAttributes?: string } = { internalId: 0, group: false, id: 0, GroupsAttributes: '' }
-                Object.assign(data, attr.get({ plain: true }))
-                data.internalId = attr.id
-                data.id = attrId++ // we have to assign unique id
-
-                delete data.GroupsAttributes
-                return data
-            })
-            result.push(group)
-        })
-        return result
-    }
-
-    public getAttribute(id: number): { attr: Attribute, groups: AttrGroup[] } | null {
-        const groups: AttrGroup[] = []
-        let attr: Attribute | null = null
-        for (var i = 0; i < this.attrGroups.length; i++) {
-            const group = this.attrGroups[i]
-            const attributes = group.getAttributes()
-            for (var j = 0; j < attributes.length; j++) {
-                if (attributes[j].id === id) {
-                    attr = attributes[j]
-                    groups.push(group.getGroup())
-                }
-            }
-        }
-        return attr ? { attr: attr, groups: groups } : null
-    }
-
-    public getAttributeByIdentifier(identifier: string, firstOnly: boolean = false): { attr: Attribute, groups: AttrGroup[] } | null {
-        const groups: AttrGroup[] = []
-        let attr: Attribute | null = null
-        for (var i = 0; i < this.attrGroups.length; i++) {
-            const group = this.attrGroups[i]
-            const attributes = group.getAttributes()
-            for (var j = 0; j < attributes.length; j++) {
-                if (attributes[j].identifier === identifier) {
-                    attr = attributes[j]
-                    if (firstOnly) return { attr: attr, groups: [group.getGroup()] }
-                    groups.push(group.getGroup())
-                }
-            }
-        }
-        return attr ? { attr: attr, groups: groups } : null
-    }
+    return attr ? { attr: attr, groups: groups } : null;
+  }
 }
 
 export class ModelsManager {
