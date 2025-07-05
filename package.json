@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "installPackages": "npm i",
     "dev": "nodemon",
     "docker": "docker build --tag openpim:server -f docker/Dockerfile .",
     "deploy": "docker tag openpim:server openpim/server:1.5 && docker push openpim/server:1.5",

@@ -13,8 +13,10 @@ export class Channel extends Base {
   public valid!: any
   public visible!: any
   public config!: any
+  public remoteDir!: string
   public remoteFilename!: string
   public mappings!: any
+  public language!: string
   public headermappings!: any
   public runtime!: any
   public parentId!: any
@@ -84,6 +86,10 @@ export function init(sequelize: Sequelize):void {
       },
       runtime: {
         type: DataTypes.JSONB,
+        allowNull: false,
+      },
+      language: {
+        type: DataTypes.STRING,
         allowNull: false,
       },
       parentId: {

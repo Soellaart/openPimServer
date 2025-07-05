@@ -1455,4 +1455,13 @@ ALTER TABLE public."channels"
     ADD COLUMN "group" boolean;
 
 ALTER TABLE public."channels"
-    ADD COLUMN "parentId" integer;
+        ADD COLUMN "parentId" integer;
+
+ALTER TABLE public."channels"
+    ADD COLUMN "language" character varying(50) NOT NULL DEFAULT 'English';
+
+ALTER TABLE public."channels"
+    ADD COLUMN "dataIdentifier" jsonb NOT NULL DEFAULT '{
+      "csvIdentifier": "sku",
+      "pimIdentifier": "SKU"
+    }'::jsonb;

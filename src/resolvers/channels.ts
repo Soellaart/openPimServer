@@ -8,17 +8,18 @@ import { ChannelsManagerFactory } from '../channels'
 import { replaceOperations, processBulkUpdateChannelsActions } from './utils'
 import { EventType } from '../models/actions'
 import { updateChannelMappings } from './import/channels'
+import { FTPChannelHandler } from '../../src/channels/ftp/FTPChannelHandler'
 
 export default {
     Query: {
         getChannelTypes: async (parent: any, args: any, context: Context) => {
             context.checkAuth()
-            
+
             return ModelsManager.getInstance().getChannelTypes()
         },
         getChannels: async (parent: any, args: any, context: Context) => {
             context.checkAuth()
-            
+
             const mng = ModelsManager.getInstance().getModelManager(context.getCurrentUser()!.tenantId)
             let cloned = JSON.parse(JSON.stringify(mng.getChannels()))
             cloned.forEach((channel:Channel) => {
@@ -42,7 +43,7 @@ export default {
             if (!context.canViewChannel(chan.identifier)) {
                 throw new Error('User '+ context.getCurrentUser()?.id+ ' does not has permissions to view channel, tenant: ' + context.getCurrentUser()!.tenantId)
             }
-            
+
             const groupExpression = fn('jsonb_extract_path', literal('channels'), chan.identifier, 'status')
             const whereExpression: any = {channels: {}}
             whereExpression.channels[chan.identifier] =  { [Op.ne]: null}
@@ -70,7 +71,7 @@ export default {
             if (!context.canViewChannel(chan.identifier)) {
                 throw new Error('User '+ context.getCurrentUser()?.id+ ' does not has permissions to view channel, tenant: ' + context.getCurrentUser()!.tenantId)
             }
-            
+
             const groupExpression = fn('jsonb_extract_path', literal('channels'), chan.identifier, 'category')
             const groupExpression2 = fn('jsonb_extract_path', literal('channels'), chan.identifier, 'status')
             const whereExpression: any = {channels: {}}
@@ -219,9 +220,9 @@ export default {
             const channelMng = ChannelsManagerFactory.getInstance().getChannelsManager(context.getCurrentUser()!.tenantId)
             channelMng.triggerChannel(chan, language, data, context)
         },
-        createChannel: async (parent: any, {identifier, name, order, group, active, type, valid, visible, config, mappings, runtime, parentId}: any, context: Context) => {
+        createChannel: async (parent: any, {identifier, name, order, group, active, type, valid, visible, config, mappings, headermappings, runtime,language, parentId}: any, context: Context) => {
             context.checkAuth()
-            if (!context.canEditConfig(ConfigAccess.CHANNELS)) 
+            if (!context.canEditConfig(ConfigAccess.CHANNELS))
                 throw new Error('User '+ context.getCurrentUser()?.id+ ' does not has permissions to create channel, tenant: ' + context.getCurrentUser()!.tenantId)
 
             if (!/^[A-Za-z0-9_]*$/.test(identifier)) throw new Error('Identifier must not has spaces and must be in English only: ' + identifier + ', tenant: ' + context.getCurrentUser()!.tenantId)
@@ -250,6 +251,7 @@ export default {
                     visible: vis,
                     config: config ? config : {},
                     mappings: mappings ? mappings : {},
+                    headermappings: headermappings ? headermappings : {},
                     runtime: runtime ? runtime : {},
                     parentId: parentId != null ? parentId : 0,
                 }, {transaction: t})
@@ -262,9 +264,35 @@ export default {
             await mng.reloadModelRemotely(chan.id, null, 'CHANNEL', false, context.getUserToken())
             return chan.id
         },
-        updateChannel: async (parent: any, { id, name, order, group, active, type, valid, visible, config, mappings, runtime, parentId }: any, context: Context) => {
+        testChannel: async (parent: any, {identifier, name, order, group, active, type, valid, visible, config, mappings, headermappings, runtime,language, parentId}: any, context: Context) => {
+          let resolver = new FTPChannelHandler()
+          context.checkAuth()
+          const connectionResult = await resolver.testConnection(config)
+          if (!connectionResult.success) {
+            throw new Error('Connection failed: ' + connectionResult.message)
+          }
+          return {
+            success: true,
+            message: connectionResult.message,
+            headers: connectionResult.headers,
+        }
+        },
+        testSavedChannel:  async (parent: any, { id, name, order, group, active, type, valid, visible, config, mappings, headermappings, runtime,language, parentId }: any, context: Context) => {
+          let resolver = new FTPChannelHandler()
+          context.checkAuth()
+          const connectionResult = await resolver.testConnection(config);
+          if (!connectionResult.success) {
+            throw new Error('Connection failed: ' + connectionResult.message)
+          }
+          return {
+            success: true,
+            message: connectionResult.message,
+            headers: connectionResult.headers,
+          }
+        },
+      updateChannel: async (parent: any, { id, name, order, group, active, type, valid, visible, config, mappings, headermappings, runtime, language, parentId }: any, context: Context) => {
             context.checkAuth()
-            if (!context.canEditConfig(ConfigAccess.CHANNELS)) 
+            if (!context.canEditConfig(ConfigAccess.CHANNELS))
                 throw new Error('User '+ context.getCurrentUser()?.id+ ' does not has permissions to update channel, tenant: ' + context.getCurrentUser()!.tenantId)
 
             const nId = parseInt(id)
@@ -296,11 +324,13 @@ export default {
             if (mappings) {
                 chan.mappings = updateChannelMappings(context, chan, mappings, conflictedCategories)
             }
+            if (headermappings) chan.headermappings = headermappings
             if (runtime) chan.runtime = runtime
             chan.updatedBy = context.getCurrentUser()!.login
             await sequelize.transaction(async (t) => {
                 await chan!.save({ transaction: t })
             })
+            if (language) chan.language = language
 
             const channelMng = ChannelsManagerFactory.getInstance().getChannelsManager(context.getCurrentUser()!.tenantId)
             if (chan.active) {
@@ -316,14 +346,14 @@ export default {
         },
         removeChannel: async (parent: any, { id }: any, context: Context) => {
             context.checkAuth()
-            if (!context.canEditConfig(ConfigAccess.CHANNELS)) 
+            if (!context.canEditConfig(ConfigAccess.CHANNELS))
                 throw new Error('User '+ context.getCurrentUser()?.id+ ' does not has permissions to remove channel, tenant: ' + context.getCurrentUser()!.tenantId)
 
             const nId = parseInt(id)
 
             const mng = ModelsManager.getInstance().getModelManager(context.getCurrentUser()!.tenantId)
 
-            const idx = mng.getChannels().findIndex( (chan) => chan.id === nId)    
+            const idx = mng.getChannels().findIndex( (chan) => chan.id === nId)
             if (idx === -1) {
                 throw new Error('Failed to find channel by id: ' + id + ', tenant: ' + mng.getTenantId())
             }
@@ -331,7 +361,7 @@ export default {
             const chan  = mng.getChannels()[idx]
             chan.updatedBy = context.getCurrentUser()!.login
             // we have to change identifier during deletion to make possible that it will be possible to make new type with same identifier
-            chan.identifier = chan.identifier + '_d_' + Date.now() 
+            chan.identifier = chan.identifier + '_d_' + Date.now()
             await sequelize.transaction(async (t) => {
                 await chan!.save({transaction: t})
                 await chan!.destroy({transaction: t})
@@ -359,7 +389,7 @@ export default {
                 const ids = items.map(item => item.id)
                 whereObj = {id: {[Op.in]: ids}}
             }
-    
+
             const { newChannels, newWhere, result } = await processBulkUpdateChannelsActions(context, EventType.BeforeBulkUpdateChannels, identifiers, status, whereObj)
 
             identifiers = newChannels
@@ -417,7 +447,7 @@ export default {
             )
 
             await processBulkUpdateChannelsActions(context, EventType.AfterBulkUpdateChannels, identifiers, status, whereObj)
-          
+
             return true
         }
     }

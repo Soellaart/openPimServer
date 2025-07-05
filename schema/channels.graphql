@@ -10,8 +10,16 @@ type Query {
   getChannelAttributeValues(channelId: ID!, categoryId: ID!, attributeId: ID!) : JSONObject
 }
 
+type TestChannelResult {
+  success: Boolean!
+  message: String!
+  headers: [String]
+}
+
 type Mutation {
   createChannel(identifier: String!, name: LanguageDependentString!, order: Int!, group: Boolean!, active: Boolean!, type: Int!, valid: [ID], visible: [ID], config: JSONObject, mappings: JSONObject, headermappings: JSONObject, runtime: JSONObject, parentId: Int): ID!
+  testChannel(identifier: String!, name: LanguageDependentString!, order: Int!, group: Boolean!, active: Boolean!, type: Int!, valid: [ID], visible: [ID], config: JSONObject, mappings: JSONObject, headermappings: JSONObject, runtime: JSONObject, parentId: Int): TestChannelResult!
+  testSavedChannel(id: ID!, name: LanguageDependentString, order: Int, group: Boolean, active: Boolean, type: Int, valid: [ID], visible: [ID], config: JSONObject, mappings: JSONObject, headermappings: JSONObject, runtime: JSONObject, parentId: Int) : TestChannelResult!
   updateChannel(id: ID!, name: LanguageDependentString, order: Int, group: Boolean, active: Boolean, type: Int, valid: [ID], visible: [ID], config: JSONObject, mappings: JSONObject, headermappings: JSONObject, runtime: JSONObject, parentId: Int) : ID!
   removeChannel(id: ID!) : Boolean!
   triggerChannel(id: ID!, language: String!, data: JSONObject) : Boolean
