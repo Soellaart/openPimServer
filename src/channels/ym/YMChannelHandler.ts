@@ -299,7 +299,7 @@ export class YMChannelHandler extends ChannelHandler {
                 const attrs = this.getAttributesForGroups(mng, item, groupIds)
                 for (let i = 0; i < attrs.length; i++) {
                     const attr = attrs[i]
-                    let name = attr.name.ru
+                    let name = attr.name.en
                     const idx = name.indexOf(' (')
                     if (idx != -1) name = name.substring(0, idx)
                     const paramConfig = {id:name, attrIdent: attr.identifier}

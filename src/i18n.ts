@@ -14,7 +14,7 @@ i18nextInstance
       loadPath: `${__dirname}/locales/{{lng}}.json`,
     },
     fallbackLng: 'en',
-    preload: ['en', 'ru'],
+    preload: ['en'], // #todo add nl ['en', 'nl]
   });
 
 export default i18nextInstance;

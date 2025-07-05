@@ -20,7 +20,7 @@ mutation { import(
         {
             delete: false
             identifier: "tst",
-            name: {ru: "test attribute"},
+            name: {en: "test attribute"},
             valid: ["sa1_2"],
             visible: ["itemLevel1"],
             relations: ["rel1"],
@@ -138,7 +138,7 @@ export async function importAttribute(context: Context, config: IImportConfig, a
                 languageDependent: attr.languageDependent || false,
                 type: attr.type || 1,
                 pattern: attr.pattern || '',
-                errorMessage: attr.errorMessage || {ru:""},
+                errorMessage: attr.errorMessage || {en:""},
                 lov: lov,
                 richText: attr.richText != null ? attr.richText : false,
                 multiLine: attr.multiLine != null ? attr.multiLine : false,

@@ -3,7 +3,7 @@ import { GraphQLScalarType, Kind, StringValueNode } from 'graphql'
 // https://stackoverflow.com/questions/41510880/whats-the-difference-between-parsevalue-and-parseliteral-in-graphqlscalartype
 export default new GraphQLScalarType({
     name: 'LanguageDependentString',
-    description: 'String that can has several values depending of language: {"en":"english text", "ru":"russian text", etc}',
+    description: 'String that can has several values depending of language: {"en":"english text", "nl":"dutch text", etc}',
     serialize: (value) => {
         return value
     },

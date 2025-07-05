@@ -18,7 +18,7 @@ mutation { import(
         {
             delete: false
             identifier: "tst",
-            name: {ru: "test group"},
+            name: {en: "test group"},
             order: 10,
             visible: true
         }

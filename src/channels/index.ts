@@ -31,7 +31,6 @@ export class ChannelsManager {
 
     public async triggerChannel(channel: Channel, language: string, data: any, context?: Context) {
         logger.info("Channel " + channel.identifier + " was triggered, tenant: " + this.tenantId)
-
         if (!language) {
             logger.error("Failed to find language for automatic start for channel " + channel.identifier + ", processing stopped, tenant: " + this.tenantId)
             return
@@ -180,7 +179,7 @@ export class ChannelsManager {
                 }
             }
         } else {
-            logger.info(`   Skip start because channel is not active`)
+            logger.info(`Skip start because channel is not active`)
         }
     }
 

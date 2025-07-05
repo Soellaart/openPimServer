@@ -19,7 +19,7 @@ mutation { import(
         {
             delete: false
             identifier: "tst",
-            name: {ru: "test relation"},
+            name: {en: "test relation"},
             sources: ["level1_2"],
             targets: ["other1_2"],
             child: false,

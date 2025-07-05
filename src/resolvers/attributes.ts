@@ -185,7 +185,7 @@ export default {
                 languageDependent: languageDependent || false,
                 type: type,
                 pattern: pattern || '',
-                errorMessage: errorMessage || { ru: "" },
+                errorMessage: errorMessage || { en: "" },
                 lov: lov ? parseInt(lov) : null,
                 richText: richText != null ? richText : false,
                 multiLine: multiLine != null ? multiLine : false,

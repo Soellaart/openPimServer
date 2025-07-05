@@ -27,7 +27,7 @@ mutation { import(
             targetIdentifier: "sa1",
             values: {
                 attr1: "aaa"
-                attr2: {ru: "test"}
+                attr2: {en: "test"}
             }
         }
     ]

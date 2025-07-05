@@ -27,10 +27,10 @@ mutation { import(
             identifier: "itemSa1",
             parentIdentifier: "itemLevel1",
             typeIdentifier: "sa1",
-            name: {ru:"Продукт1"},
+            name: {en:"Product1"},
             values: {
                 attr1: "aaa"
-                attr2: {ru: "test"}
+                attr2: {en: "test"}
             }
         }]
     ) {
