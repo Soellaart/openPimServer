@@ -8,7 +8,7 @@ export class ImportConfig extends Base {
   public name!: any
   public type!: number
   public mappings!: any
-  public headermappings!: any
+  public headerMappings!: any
   public filedata!: any
   public config!: any
   public static applyScope(context: Context) {
@@ -35,7 +35,7 @@ export function init(sequelize: Sequelize):void {
         type: DataTypes.JSONB,
         allowNull: false,
       },
-      headermappings: {
+      headerMappings: {
         type: DataTypes.JSONB,
         allowNull: false,
       },

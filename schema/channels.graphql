@@ -16,14 +16,20 @@ type TestChannelResult {
   headers: [String]
 }
 
+type GetHeadersResult {
+  success: Boolean!
+  headers: [String]
+}
+
 type Mutation {
-  createChannel(identifier: String!, name: LanguageDependentString!, order: Int!, group: Boolean!, active: Boolean!, type: Int!, valid: [ID], visible: [ID], config: JSONObject, mappings: JSONObject, headermappings: JSONObject, runtime: JSONObject, parentId: Int): ID!
-  testChannel(identifier: String!, name: LanguageDependentString!, order: Int!, group: Boolean!, active: Boolean!, type: Int!, valid: [ID], visible: [ID], config: JSONObject, mappings: JSONObject, headermappings: JSONObject, runtime: JSONObject, parentId: Int): TestChannelResult!
-  testSavedChannel(id: ID!, name: LanguageDependentString, order: Int, group: Boolean, active: Boolean, type: Int, valid: [ID], visible: [ID], config: JSONObject, mappings: JSONObject, headermappings: JSONObject, runtime: JSONObject, parentId: Int) : TestChannelResult!
-  updateChannel(id: ID!, name: LanguageDependentString, order: Int, group: Boolean, active: Boolean, type: Int, valid: [ID], visible: [ID], config: JSONObject, mappings: JSONObject, headermappings: JSONObject, runtime: JSONObject, parentId: Int) : ID!
+  createChannel(identifier: String!, name: LanguageDependentString!, order: Int!, group: Boolean!, active: Boolean!, type: Int!, valid: [ID], visible: [ID], config: JSONObject, mappings: JSONObject, headerMappings: JSONObject, runtime: JSONObject, parentId: Int): ID!
+  testChannel(identifier: String!, name: LanguageDependentString!, order: Int!, group: Boolean!, active: Boolean!, type: Int!, valid: [ID], visible: [ID], config: JSONObject, mappings: JSONObject, headerMappings: JSONObject, runtime: JSONObject, parentId: Int): TestChannelResult!
+  testSavedChannel(id: ID!, name: LanguageDependentString, order: Int, group: Boolean, active: Boolean, type: Int, valid: [ID], visible: [ID], config: JSONObject, mappings: JSONObject, headerMappings: JSONObject, runtime: JSONObject, parentId: Int) : TestChannelResult!
+  updateChannel(id: ID!, name: LanguageDependentString, order: Int, group: Boolean, active: Boolean, type: Int, valid: [ID], visible: [ID], config: JSONObject, mappings: JSONObject, headerMappings: JSONObject, runtime: JSONObject, parentId: Int) : ID!
   removeChannel(id: ID!) : Boolean!
   triggerChannel(id: ID!, language: String!, data: JSONObject) : Boolean
   bulkUpdateChannels(identifiers: [String]!, status: Int!, message: String, where: String!) : Boolean
+  getHeaders(id: ID!, name: LanguageDependentString, order: Int, group: Boolean, active: Boolean, type: Int, valid: [ID], visible: [ID], config: JSONObject, mappings: JSONObject, headerMappings: JSONObject, runtime: JSONObject, parentId: Int) : GetHeadersResult!
 }
 
 type Channel {
@@ -38,7 +44,7 @@ type Channel {
   visible: [String]!
   config: JSONObject!
   mappings: JSONObject!
-  headermappings: JSONObject!
+  headerMappings: JSONObject!
   runtime: JSONObject!
   parentId: Int!,
   createdBy: String!

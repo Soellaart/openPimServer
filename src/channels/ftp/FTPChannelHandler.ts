@@ -76,12 +76,12 @@ export class FTPChannelHandler extends ChannelHandler {
     // Decide which headers to use:
     // 1) channel.config.headerMapping if it's defined & non-empty
     // 2) else fallback to "original headers" from item.values keys
-    const customHeaders = channel.config.headerMapping ? Object.keys(channel.config.headerMapping) : [];
+    const headerMapping = channel.config.headerMapping ? Object.keys(channel.config.headerMapping) : [];
 
     let externalHeaders: string[] = [];
-    if (customHeaders.length > 0) {
-      externalHeaders = customHeaders;
-      context.log += `Using custom headerMapping with ${externalHeaders.length} headers.\n`;
+    if (headerMapping.length > 0) {
+      externalHeaders = headerMapping;
+      context.log += `Using custom headerMapping with ${headerMapping.length} headers.\n`;
     } else {
       context.log += 'No custom headers found, falling back to item.values keys.\n';
       if (items.count > 0) {
@@ -102,7 +102,7 @@ export class FTPChannelHandler extends ChannelHandler {
     for (const item of items.rows) {
       let rowValues: string[] = [];
 
-      if (customHeaders.length > 0) {
+      if (headerMapping.length > 0) {
         // We have a custom mapping: use mapLocalAttributesToExternalRow
         const externalRowObj = this.mapLocalAttributesToExternalRow(channel, item);
         rowValues = externalHeaders.map((hdr) => {

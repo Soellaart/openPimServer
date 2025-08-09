@@ -1446,7 +1446,7 @@ ALTER TABLE public."savedSearch"
 -- v1.5.1
 --
 ALTER TABLE public."channels"
-    ADD COLUMN headermappings jsonb;
+    ADD COLUMN headerMappings jsonb;
 
 ALTER TABLE public."channels"
     ADD COLUMN "order" integer;
