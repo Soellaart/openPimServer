@@ -31,6 +31,9 @@ export default {
           // Ozon
           channel.config.ozonApiKey = '*****';
         }
+        if (channel.type === 9 && channel.config.password) {
+          channel.config.password = '*****';
+        }
       });
       return cloned;
     },
@@ -276,7 +279,7 @@ export default {
     },
     createChannel: async (
       parent: any,
-      { identifier, name, order, group, active, type, valid, visible, config, mappings, headerMappings, runtime, language, parentId }: any,
+      { identifier, name, order, group, active, type, valid, visible, config, mappings, headerMappings,dataIdentifier, runtime, language, parentId }: any,
       context: Context,
     ) => {
       context.checkAuth();
@@ -319,6 +322,7 @@ export default {
             config: config ? config : {},
             mappings: mappings ? mappings : {},
             headerMappings: headerMappings ? headerMappings : {},
+            dataIdentifier: dataIdentifier ? dataIdentifier : null,
             runtime: runtime ? runtime : {},
             parentId: parentId != null ? parentId : 0,
           },
@@ -369,7 +373,7 @@ export default {
     },
     updateChannel: async (
       parent: any,
-      { id, name, order, group, active, type, valid, visible, config, mappings, headerMappings, runtime, language, parentId }: any,
+      { id, name, order, group, active, type, valid, visible, config, mappings, headerMappings,dataIdentifier, runtime, language, parentId }: any,
       context: Context,
     ) => {
       context.checkAuth();
@@ -415,6 +419,7 @@ export default {
       logger.info('chan' + JSON.stringify(chan));
       logger.info('headerMappings' + headerMappings.values);
       if (headerMappings) chan.headerMappings = headerMappings;
+      if (dataIdentifier) chan.dataIdentifier = dataIdentifier;
       if (runtime) chan.runtime = runtime;
       chan.updatedBy = context.getCurrentUser()!.login;
       await sequelize.transaction(async (t) => {
