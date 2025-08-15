@@ -555,5 +555,22 @@ export default {
 
       return true;
     },
+    getHeaders: async (
+      parent: any,
+      { identifier, name, order, group, active, type, valid, visible, config, mappings, headerMappings, runtime, language, parentId }: any,
+      context: Context,
+    ) => {
+      let resolver = new FTPChannelHandler();
+      context.checkAuth();
+      const connectionResult = await resolver.testConnection(config);
+      if (!connectionResult.success) {
+        throw new Error('Connection failed: ' + connectionResult.message);
+      }
+      return {
+        success: true,
+        message: connectionResult.message,
+        headers: connectionResult.headers,
+      };
+    },
   },
 };
