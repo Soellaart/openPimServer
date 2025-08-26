@@ -274,6 +274,33 @@ export class FTPChannelHandler extends ChannelHandler {
     return { success: true, message: 'TestedHeaders', headers: returnHeaders.headers }; //Connection successful and file exists with valid headers.
   }
 
+  public async testConnection_getHeader(channelID: number): Promise<{ success: boolean; message: string; headers?: string[] }> {
+    const channel = await Channel.findOne({ where: { id: channelID, active: true } });
+    const config = channel ? channel.config : null;
+    const connectionResult = await this.ftpConnection(config);
+    if (!connectionResult.success) {
+      return { success: false, message: `Connection failed: ${connectionResult.message}` };
+    }
+
+    const fileExists = await this.checkFileExists(config.ftpRemoteDir + config.remoteFilename || 'import.csv', config);
+    if (!fileExists) {
+      return { success: false, message: 'TestedConnection' }; //Connection successful but file does not exist.
+    }
+
+    const returnHeaders: {
+      success: boolean;
+      headers?: string[];
+    } = await this.getHeaders(config.ftpRemoteDir + config.remoteFilename || 'import.csv', config);
+    if (!returnHeaders.success) {
+      return { success: false, message: 'TestedHeadersFails', headers: returnHeaders.headers }; // Connection successful but file does not have headers.
+    }
+    if (!returnHeaders.headers || returnHeaders.headers.length === 0) {
+      return { success: false, message: 'TestedHeadersEmpty' }; //Connection successful but file has no headers.
+    }
+    return { success: true, message: 'TestedHeaders', headers: returnHeaders.headers }; //Connection successful and file exists with valid headers.
+
+  }
+
   private async ftpConnection(config: any): Promise<{ success: boolean; message?: string }> {
     try {
       await this.sftpClient.connect({

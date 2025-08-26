@@ -8,6 +8,7 @@ type Query {
   getChannelCategories(id: ID!) : ChannelCategoriesResponse
   getChannelAttributes(channelId: ID!, categoryId: ID!) : [ChannelAttribute]
   getChannelAttributeValues(channelId: ID!, categoryId: ID!, attributeId: ID!) : JSONObject
+    getHeaders(channelId: ID!) : GetHeadersResult!
 }
 
 type TestChannelResult {
@@ -29,7 +30,6 @@ type Mutation {
   removeChannel(id: ID!) : Boolean!
   triggerChannel(id: ID!, language: String!, data: JSONObject) : Boolean
   bulkUpdateChannels(identifiers: [String]!, status: Int!, message: String, where: String!) : Boolean
-  getHeaders(id: ID!, name: LanguageDependentString, order: Int, group: Boolean, active: Boolean, type: Int, valid: [ID], visible: [ID], config: JSONObject, mappings: JSONObject, headerMappings: JSONObject, runtime: JSONObject, parentId: Int) : GetHeadersResult!
 }
 
 type Channel {
@@ -48,7 +48,6 @@ type Channel {
   runtime: JSONObject!
     dataIdentifier: JSONObject!
   parentId: Int!,
-
     createdBy: String!
   createdAt: UTCDateTime!
   updatedBy: String!

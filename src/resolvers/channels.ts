@@ -255,6 +255,23 @@ export default {
       const channelMng = ChannelsManagerFactory.getInstance().getChannelsManager(context.getCurrentUser()!.tenantId);
       return channelMng.getHandler(chan).getChannelAttributeValues(chan, categoryId, attributeId);
     },
+    getHeaders: async (
+      parent: any,
+      { channelId }: any,
+      context: Context,
+    ) => {
+      let resolver = new FTPChannelHandler();
+      context.checkAuth();
+      const connectionResult = await resolver.testConnection_getHeader(channelId);
+      if (!connectionResult.success) {
+        throw new Error('Connection failed: ' + connectionResult.message);
+      }
+      return {
+        success: true,
+        message: connectionResult.message,
+        headers: connectionResult.headers,
+      };
+    },
   },
   Mutation: {
     triggerChannel: async (parent: any, { id, language, data }: any, context: Context) => {
@@ -559,23 +576,6 @@ export default {
       await processBulkUpdateChannelsActions(context, EventType.AfterBulkUpdateChannels, identifiers, status, whereObj);
 
       return true;
-    },
-    getHeaders: async (
-      parent: any,
-      { identifier, name, order, group, active, type, valid, visible, config, mappings, headerMappings, runtime, language, parentId }: any,
-      context: Context,
-    ) => {
-      let resolver = new FTPChannelHandler();
-      context.checkAuth();
-      const connectionResult = await resolver.testConnection(config);
-      if (!connectionResult.success) {
-        throw new Error('Connection failed: ' + connectionResult.message);
-      }
-      return {
-        success: true,
-        message: connectionResult.message,
-        headers: connectionResult.headers,
-      };
     },
   },
 };
