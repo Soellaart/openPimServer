@@ -48,7 +48,27 @@ export class ChannelsManager {
             this.jobMap[channel.identifier+(data?'_sync':'')] = jobDetails
         }
 
-        if (!data) {
+        if (channel.type === 9) {
+            // FTP channel always process
+          try {
+            const handler = this.getHandler(channel)
+            if (process.env.OPENPIM_NO_CHANNEL_SCHEDULER === 'false') {
+                // reload channel from DB
+                const tst = await Channel.findByPk(channel.id)
+                if (tst) {
+                    channel = tst
+                    logger.info("Channel reloaded: " + channel.identifier + ", tenant: " + this.tenantId)
+                }
+            }
+            await handler.processChannel(channel, language, data, context)
+          }
+          finally {
+            jobDetails[1] = false
+          }
+          return
+        }
+
+        if (!data && channel.type !== 9) {
             try {
                 const whereExpression: any = { tenantId: this.tenantId, channels: {} }
                 whereExpression.channels[channel.identifier] = { status: 1 }

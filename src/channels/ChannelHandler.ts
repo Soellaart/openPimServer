@@ -47,6 +47,7 @@ export abstract class ChannelHandler {
         return await ChannelExecution.create({
             tenantId: channel.tenantId,
             channelId: channel.id,
+            dataIdentifier: channel.runtime.dataIdentifier,
             status: 1,
             startTime: new Date(),
             finishTime: null,
@@ -387,20 +388,29 @@ export abstract class ChannelHandler {
       return this.a[char] || char; 
     }).join("")
   }
+
   public mapExternalRowToLocalAttributes(
     channel: Channel,
     rowData: { [csvHeader: string]: any }
   ): { [attrName: string]: any } {
     const result: { [attrName: string]: any } = {}
-    if (!channel.config.headerMapping) {
+    logger.info(`Mapping external row to local attributes for channel: ${channel.identifier}`)
+    if (!channel.headerMappings) {
+      logger.info('No headerMapping found on channel')
       return result
     }
-    for (let externalHeader in channel.config.headerMapping) {
-      const localAttr = channel.config.headerMapping[externalHeader]
+    for (let externalHeader in channel.headerMappings) {
+      const localAttr = channel.headerMappings[externalHeader]
+      logger.info(channel.headerMappings[externalHeader])
+      logger.info(JSON.stringify(rowData))
       if (rowData.hasOwnProperty(externalHeader)) {
+        logger.info(`Mapping external header '${externalHeader}' to local attribute '${localAttr}' with value: ${rowData[externalHeader]}`)
         result[localAttr] = rowData[externalHeader]
+      } else {
+        logger.info(`External header '${externalHeader}' not found in rowData`)
       }
     }
+    logger.info(`Resulting mapped attributes: ${JSON.stringify(result)}`)
     return result
   }
 
@@ -409,11 +419,11 @@ export abstract class ChannelHandler {
     item: Item
   ): { [csvHeader: string]: any } {
     const result: { [csvHeader: string]: any } = {}
-    if (!channel.config.headerMapping) return result
+    if (!channel.headerMappings) return result
 
     const invertMap: { [localAttr: string]: string } = {}
-    for (let externalHeader in channel.config.headerMapping) {
-      const localAttr = channel.config.headerMapping[externalHeader]
+    for (let externalHeader in channel.headerMappings) {
+      const localAttr = channel.headerMappings[externalHeader]
       invertMap[localAttr] = externalHeader
     }
 

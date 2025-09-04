@@ -34,7 +34,10 @@ export class FTPChannelHandler extends ChannelHandler {
       await this.finishExecution(channel, chanExec, 3, 'SFTP password not provided');
       return;
     }
-    const hasHeaders = channel.config.headerMapping && Object.keys(channel.config.headerMapping).length > 0;
+
+    logger.info("Starting FTP channel processing", { channelId: channel.id });
+
+    const hasHeaders = channel.headerMappings && Object.keys(channel.headerMappings).length > 0;
     // Check if headerMapping is defined if not the headers sould be the same so we can still continue
     if (!hasHeaders) {
       context.log += 'No headerMapping defined, using default headers.\n';
@@ -43,13 +46,9 @@ export class FTPChannelHandler extends ChannelHandler {
     }
 
     try {
-      // If data.download is set, we do "import" from SFTP. Otherwise, "export".
-      if (data && data.download) {
-        await this.downloadAndProcessCSV(channel, context, language);
-      } else {
-        await this.generateAndUploadCSV(channel, context, language);
-      }
-      // Mark success
+
+        await this.processCSV(channel, context, await this.downloadCSV(channel, context), language);
+      logger.info("FTP channel processing complete", { channelId: channel.id });
       await this.finishExecution(channel, chanExec, 2, context.log);
     } catch (err: any) {
       logger.error('Error in FTP channel processing', err);
@@ -61,104 +60,16 @@ export class FTPChannelHandler extends ChannelHandler {
   /**
    * Generate a CSV from local items, then upload via SFTP using ssh2-sftp-client.
    */
-  private async generateAndUploadCSV(channel: Channel, context: FTPJobContext, language: string) {
-    context.log += 'Starting CSV generation...\n';
-
-    // Query items
-    const query: any = {};
-    query[channel.identifier] = { status: 1 };
-    const items = await Item.findAndCountAll({
-      where: { tenantId: channel.tenantId, channels: query },
-      order: [['id', 'ASC']],
-    });
-    context.log += `Found ${items.count} records to export.\n`;
-
-    // Decide which headers to use:
-    // 1) channel.config.headerMapping if it's defined & non-empty
-    // 2) else fallback to "original headers" from item.values keys
-    const headerMapping = channel.config.headerMapping ? Object.keys(channel.config.headerMapping) : [];
-
-    let externalHeaders: string[] = [];
-    if (headerMapping.length > 0) {
-      externalHeaders = headerMapping;
-      context.log += `Using custom headerMapping with ${headerMapping.length} headers.\n`;
-    } else {
-      context.log += 'No custom headers found, falling back to item.values keys.\n';
-      if (items.count > 0) {
-        // Use the first item to get an idea of which keys exist in item.values
-        externalHeaders = Object.keys(items.rows[0].values);
-        context.log += `Discovered ${externalHeaders.length} fallback headers from item.values.\n`;
-      } else {
-        context.log += 'No items found to derive fallback headers.\n';
-        return; // can’t proceed without any headers
-      }
+  private async downloadCSV(channel: Channel, context: FTPJobContext): Promise<string> {
+    let constLocalFilePath = '/TEMP/FTP/';
+    if (!fs.existsSync(constLocalFilePath)) {
+      fs.mkdirSync(constLocalFilePath, { recursive: true });
     }
-
-    // Build CSV header row
-    const csvRows: string[] = [];
-    csvRows.push(externalHeaders.join(','));
-
-    // For each item, build a row
-    for (const item of items.rows) {
-      let rowValues: string[] = [];
-
-      if (headerMapping.length > 0) {
-        // We have a custom mapping: use mapLocalAttributesToExternalRow
-        const externalRowObj = this.mapLocalAttributesToExternalRow(channel, item);
-        rowValues = externalHeaders.map((hdr) => {
-          return externalRowObj[hdr] !== undefined ? String(externalRowObj[hdr]) : '';
-        });
-      } else {
-        // Fallback scenario: just pull item.values
-        rowValues = externalHeaders.map((hdr) => {
-          // If the fallback headers are from item.values keys, we can do:
-          const val = item.values[hdr];
-          return val !== undefined ? String(val) : '';
-        });
-      }
-
-      csvRows.push(rowValues.join(','));
-      context.log += `Exported item ${item.identifier} to CSV row.\n`;
-    }
-
-    // Join into final CSV content
-    const csvContent = csvRows.join('\n');
-
-    // Write to temp local file
-    const localFilePath = path.join(__dirname, `export_${Date.now()}.csv`);
-    fs.writeFileSync(localFilePath, csvContent, 'utf8');
-    context.log += 'CSV file created locally.\n';
-
-    // Prepare SFTP info
-    const remoteDir = channel.config.ftpRemoteDir || '/';
-    const remoteFilePath = path.posix.join(remoteDir, 'export.csv');
-
-    try {
-      await this.sftpClient.connect({
-        host: channel.config.ftpHost,
-        port: channel.config.ftpPort || 22,
-        username: channel.config.ftpUser,
-        password: channel.config.ftpPassword,
-      });
-
-      // Upload
-      await this.sftpClient.put(localFilePath, remoteFilePath);
-      context.log += `CSV file uploaded to SFTP as ${remoteFilePath}.\n`;
-    } catch (sftpErr: any) {
-      context.log += `SFTP upload error: ${sftpErr.message}\n`;
-      logger.error('SFTP upload error', sftpErr);
-    } finally {
-      await this.sftpClient.end();
-      fs.unlinkSync(localFilePath); // cleanup local
-    }
-  }
-
-  private async downloadAndProcessCSV(channel: Channel, context: FTPJobContext, language: string) {
     context.log += 'Downloading CSV from SFTP...\n';
-
+    logger.info(JSON.stringify(channel));
     const remoteDir = channel.config.ftpRemoteDir || '/';
-    const remoteFilePath = path.posix.join(remoteDir, channel.config.remotefilename || 'import.csv');
-    const localFilePath = path.join(__dirname, `import_${Date.now()}.csv`);
+    const remoteFilePath = path.posix.join(remoteDir, channel.config.remoteFilename || 'test.csv');
+    const localFilePath = path.join("/TEMP/FTP/", `import_${Date.now()}.csv`);
 
     try {
       await this.sftpClient.connect({
@@ -168,22 +79,26 @@ export class FTPChannelHandler extends ChannelHandler {
         password: channel.config.ftpPassword,
       });
 
-      await this.sftpClient.fastGet(remoteFilePath, localFilePath);
+      await this.sftpClient.fastGet(remoteFilePath, localFilePath );
+      logger.info(`CSV downloaded from SFTP to ${localFilePath}`);
       context.log += `CSV downloaded from SFTP to ${localFilePath}.\n`;
     } catch (sftpErr: any) {
       context.log += `SFTP download error: ${sftpErr.message}\n`;
       logger.error('SFTP download error', sftpErr);
-      return;
     } finally {
       await this.sftpClient.end();
     }
 
     if (!fs.existsSync(localFilePath)) {
       context.log += 'Downloaded file not found locally, abort.\n';
-      return;
     }
+    return localFilePath;
+  }
 
+  private async processCSV(channel: Channel, context: FTPJobContext, localFilePath: string, language: string) {
     const csvContent = fs.readFileSync(localFilePath, 'utf8');
+    if (csvContent) {}
+
     const lines = csvContent
       .split('\n')
       .map((l) => l.trim())
@@ -201,12 +116,13 @@ export class FTPChannelHandler extends ChannelHandler {
       const rowVals = lines[i].split(',');
       const rowData: { [csvHeader: string]: any } = {};
       for (let j = 0; j < headers.length; j++) {
-        rowData[headers[j]] = rowVals[j];
+        const Header = headers[j].replace(/^"+|"+$/g, '').trim();
+        rowData[Header] = rowVals[j] ? rowVals[j].replace(/^"+|"+$/g, '').trim() : '';
       }
 
       const localAttrs = this.mapExternalRowToLocalAttributes(channel, rowData);
 
-      const codeField = channel.config.headerMapping['SKU'];
+      const codeField = channel.dataIdentifier;
       if (codeField && localAttrs[codeField]) {
         const sku = localAttrs[codeField];
         const item = await Item.findOne({
@@ -218,23 +134,17 @@ export class FTPChannelHandler extends ChannelHandler {
 
         if (!item) {
           context.log += `No item found for SKU [${sku}], row ${i}.\n`;
-          // Because we handled the null here, TypeScript knows item won't be used below.
-          continue;
         } else {
-          // item is guaranteed non-null in this block
-          // Update item.values
           for (const key in localAttrs) {
             item.values[key] = localAttrs[key];
           }
 
-          // Mark channel status
           item.channels[channel.identifier] = item.channels[channel.identifier] || {};
           item.channels[channel.identifier].status = 2;
           item.channels[channel.identifier].syncedAt = Date.now();
           item.changed('values', true);
           item.changed('channels', true);
 
-          // Now "item" is definitely not null, so TS is happy with:
           await sequelize.transaction(async (t) => {
             await item.save({ transaction: t });
           });
@@ -255,7 +165,7 @@ export class FTPChannelHandler extends ChannelHandler {
       return { success: false, message: `Connection failed: ${connectionResult.message}` };
     }
 
-    const fileExists = await this.checkFileExists(config.ftpRemoteDir + config.remoteFilename || 'import.csv', config);
+    const fileExists = await this.checkFileExists(config.ftpRemoteDir + config.remoteFilename || 'test.csv', config);
     if (!fileExists) {
       return { success: false, message: 'TestedConnection' }; //Connection successful but file does not exist.
     }
@@ -263,7 +173,7 @@ export class FTPChannelHandler extends ChannelHandler {
     const returnHeaders: {
       success: boolean;
       headers?: string[];
-    } = await this.getHeaders(config.ftpRemoteDir + config.remoteFilename || 'import.csv', config);
+    } = await this.getHeaders(config.ftpRemoteDir + config.remoteFilename || 'test.csv', config);
     if (!returnHeaders.success) {
       return { success: false, message: 'TestedHeadersFails', headers: returnHeaders.headers }; // Connection successful but file does not have headers.
     }
@@ -282,7 +192,7 @@ export class FTPChannelHandler extends ChannelHandler {
       return { success: false, message: `Connection failed: ${connectionResult.message}` };
     }
 
-    const fileExists = await this.checkFileExists(config.ftpRemoteDir + config.remoteFilename || 'import.csv', config);
+    const fileExists = await this.checkFileExists(config.ftpRemoteDir + config.remoteFilename || 'test.csv', config);
     if (!fileExists) {
       return { success: false, message: 'TestedConnection' }; //Connection successful but file does not exist.
     }
@@ -290,7 +200,7 @@ export class FTPChannelHandler extends ChannelHandler {
     const returnHeaders: {
       success: boolean;
       headers?: string[];
-    } = await this.getHeaders(config.ftpRemoteDir + config.remoteFilename || 'import.csv', config);
+    } = await this.getHeaders(config.ftpRemoteDir + config.remoteFilename || 'test.csv', config);
     if (!returnHeaders.success) {
       return { success: false, message: 'TestedHeadersFails', headers: returnHeaders.headers }; // Connection successful but file does not have headers.
     }
