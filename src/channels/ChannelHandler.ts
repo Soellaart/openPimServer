@@ -410,7 +410,7 @@ export abstract class ChannelHandler {
         logger.info(`External header '${externalHeader}' not found in rowData`)
       }
     }
-    logger.info(`Resulting mapped attributes: ${JSON.stringify(result)}`)
+    //logger.info(`Resulting mapped attributes: ${JSON.stringify(result)}`)
     return result
   }
 

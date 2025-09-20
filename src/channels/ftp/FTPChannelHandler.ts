@@ -46,8 +46,7 @@ export class FTPChannelHandler extends ChannelHandler {
     }
 
     try {
-
-        await this.processCSV(channel, context, await this.downloadCSV(channel, context), language);
+      await this.processCSV(channel, context, await this.downloadCSV(channel, context), language);
       logger.info("FTP channel processing complete", { channelId: channel.id });
       await this.finishExecution(channel, chanExec, 2, context.log);
     } catch (err: any) {
@@ -66,7 +65,7 @@ export class FTPChannelHandler extends ChannelHandler {
       fs.mkdirSync(constLocalFilePath, { recursive: true });
     }
     context.log += 'Downloading CSV from SFTP...\n';
-    logger.info(JSON.stringify(channel));
+    //logger.info(JSON.stringify(channel));
     const remoteDir = channel.config.ftpRemoteDir || '/';
     const remoteFilePath = path.posix.join(remoteDir, channel.config.remoteFilename || 'test.csv');
     const localFilePath = path.join("/TEMP/FTP/", `import_${Date.now()}.csv`);
@@ -108,9 +107,8 @@ export class FTPChannelHandler extends ChannelHandler {
       fs.unlinkSync(localFilePath);
       return;
     }
-
     const headers = lines[0].split(',');
-    context.log += `CSV headers: ${headers.join(', ')}\n`;
+    //context.log += `CSV headers: ${headers.join(', ')}\n`;
 
     for (let i = 1; i < lines.length; i++) {
       const rowVals = lines[i].split(',');
@@ -123,8 +121,11 @@ export class FTPChannelHandler extends ChannelHandler {
       const localAttrs = this.mapExternalRowToLocalAttributes(channel, rowData);
 
       const codeField = channel.dataIdentifier;
+      context.log += `\n${JSON.stringify(codeField)}\n`;
+      context.log += `Mapped row data: ${JSON.stringify(localAttrs)}\n`;
       if (codeField && localAttrs[codeField]) {
         const sku = localAttrs[codeField];
+        logger.debug("Processing row", { row: i, sku });
         const item = await Item.findOne({
           where: {
             tenantId: channel.tenantId,
@@ -135,6 +136,7 @@ export class FTPChannelHandler extends ChannelHandler {
         if (!item) {
           context.log += `No item found for SKU [${sku}], row ${i}.\n`;
         } else {
+          context.log += `Processing item SKU [${sku}], row ${i}...\n`;
           for (const key in localAttrs) {
             item.values[key] = localAttrs[key];
           }
@@ -157,6 +159,7 @@ export class FTPChannelHandler extends ChannelHandler {
 
     fs.unlinkSync(localFilePath);
     context.log += 'Import CSV processing complete.\n';
+    console.log(context.log);
   }
 
   public async testConnection(config: any): Promise<{ success: boolean; message: string; headers?: string[] }> {
