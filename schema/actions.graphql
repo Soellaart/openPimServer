@@ -10,6 +10,25 @@ type Mutation {
   executeTableButtonAction(itemId: ID, buttonText: String!, where: String!, headers: String!, data: String, ) : ButtonActionResult!
   executeAction(itemId: ID!, actionIdentifier: ID!, data: String) : ButtonActionResult!
   testAction(itemId: ID!, actionId: ID!) : ActionTestResult
+    getActionCategories(id: ID!) : ActionCategories
+    getActionAttributes(channelId: ID!, categoryId: ID!) : [ActionAttribute]
+    getActionAttributeValues(channelId: ID!, categoryId: ID!, attributeId: ID!) : JSONObject
+}
+
+type ActionCategories {
+    list: [ChannelCategory]
+    tree: JSONObject
+}
+
+type ActionAttribute {
+    id: ID!
+    name: String!
+    category: String!
+    required: Boolean!
+    dictionary: Boolean!
+    description: String
+    dictionaryLink: String
+    dictionaryLinkPost: JSONObject
 }
 
 type Action {
