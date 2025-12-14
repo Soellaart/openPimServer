@@ -1,14 +1,14 @@
-import Context, { ConfigAccess } from '../context';
-import { ModelManager, ModelsManager } from '../models/manager';
-import { sequelize } from '../models';
-import { Channel, ChannelExecution } from '../models/channels';
-import { Item } from '../models/items';
-import { fn, literal, Op } from 'sequelize';
-import { ChannelsManagerFactory } from '../channels';
-import { replaceOperations, processBulkUpdateChannelsActions } from './utils';
-import { EventType } from '../models/actions';
-import { updateChannelMappings } from './import/channels';
-import { FTPChannelHandler } from '../../src/channels/ftp/FTPChannelHandler';
+import Context, {ConfigAccess} from '../context';
+import {ModelsManager} from '../models/manager';
+import {sequelize} from '../models';
+import {Channel, ChannelExecution} from '../models/channels';
+import {Item} from '../models/items';
+import {fn, literal, Op} from 'sequelize';
+import {ChannelsManagerFactory} from '../channels';
+import {processBulkUpdateChannelsActions, replaceOperations} from './utils';
+import {EventType} from '../models/actions';
+import {updateChannelMappings} from './import/channels';
+import {FTPChannelHandler} from '../../src/channels/ftp/FTPChannelHandler';
 import logger from '../logger';
 
 export default {
@@ -67,10 +67,9 @@ export default {
         group: [groupExpression],
       });
 
-      const res = result.map((record: any) => {
-        return { status: record.getDataValue('status'), count: record.getDataValue('count') };
+      return result.map((record: any) => {
+        return {status: record.getDataValue('status'), count: record.getDataValue('count')};
       });
-      return res;
     },
     getChannelStatusByCategories: async (parent: any, { id }: any, context: Context) => {
       context.checkAuth();
@@ -155,7 +154,7 @@ export default {
         );
       }
 
-      const res = await ChannelExecution.applyScope(context).findAndCountAll({
+      return await ChannelExecution.applyScope(context).findAndCountAll({
         where: {
           channelId: nId,
         },
@@ -163,8 +162,6 @@ export default {
         offset: offset,
         limit: limit === -1 ? null : limit,
       });
-
-      return res;
     },
     getExecutionById: async (parent: any, { id }: any, context: Context) => {
       context.checkAuth();
@@ -323,29 +320,29 @@ export default {
       const val = valid ? valid.map((elem: string) => parseInt(elem)) : [];
       const vis = visible ? visible.map((elem: string) => parseInt(elem)) : [];
       const chan = await sequelize.transaction(async (t) => {
-        const chan = await Channel.create(
-          {
-            identifier: identifier,
-            tenantId: context.getCurrentUser()!.tenantId,
-            createdBy: context.getCurrentUser()!.login,
-            updatedBy: context.getCurrentUser()!.login,
-            name: name,
-            order: order != null ? order : null,
-            group: group,
-            active: active,
-            type: type,
-            valid: val,
-            visible: vis,
-            config: config ? config : {},
-            mappings: mappings ? mappings : {},
-            headerMappings: headerMappings ? headerMappings : {},
-            dataIdentifier: dataIdentifier ? dataIdentifier : null,
-            runtime: runtime ? runtime : {},
-            parentId: parentId != null ? parentId : 0,
-          },
-          { transaction: t },
+        return await Channel.create(
+            {
+              identifier: identifier,
+              tenantId: context.getCurrentUser()!.tenantId,
+              createdBy: context.getCurrentUser()!.login,
+              updatedBy: context.getCurrentUser()!.login,
+              name: name,
+              order: order != null ? order : 0,
+              group: group != true || false ? group : false,
+              active: active,
+              type: type,
+              valid: val,
+              visible: vis,
+              language: language ? language : 'en',
+              config: config ? config : {},
+              mappings: mappings ? mappings : {},
+              headerMappings: headerMappings ? headerMappings : {},
+              dataIdentifier: dataIdentifier ? dataIdentifier : null,
+              runtime: runtime ? runtime : {},
+              parentId: parentId != null || parentId == null ? parentId : 0,
+            },
+            {transaction: t},
         );
-        return chan;
       });
 
       mng.getChannels().push(chan);
@@ -507,7 +504,7 @@ export default {
         whereObj = { id: { [Op.in]: ids } };
       }
 
-      const { newChannels, newWhere, result } = await processBulkUpdateChannelsActions(
+      const { newChannels, newWhere } = await processBulkUpdateChannelsActions(
         context,
         EventType.BeforeBulkUpdateChannels,
         identifiers,
@@ -545,10 +542,9 @@ export default {
       const andArr = [whereObj, literal(chanRestrictSQL)];
       const restrictSql = await context.generateRestrictionsInSQL('', false); // filter by items user has access
       if (restrictSql.length > 0) andArr.push(literal(restrictSql));
-      const andExpr = { [Op.and]: andArr };
-      const secureWhereObj = andExpr;
+      const secureWhereObj = {[Op.and]: andArr};
 
-      let literalStr = '';
+      let literalStr:string;
 
       if (status !== 0) {
         const param = identifiers

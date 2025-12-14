@@ -1,12 +1,11 @@
 import SftpClient from 'ssh2-sftp-client';
 import { ChannelHandler, ChannelCategory, ChannelAttribute } from '../ChannelHandler';
-import { Channel, ChannelExecution } from '../../models/channels';
+import { Channel } from '../../models/channels';
 import { Item } from '../../models/items';
 import logger from '../../logger';
 import * as fs from 'fs';
 import * as path from 'path';
 import { sequelize } from '../../models';
-import { Op } from 'sequelize';
 
 interface FTPJobContext {
   log: string;
@@ -38,17 +37,23 @@ export class FTPChannelHandler extends ChannelHandler {
     logger.info("Starting FTP channel processing", { channelId: channel.id });
 
     const hasHeaders = channel.headerMappings && Object.keys(channel.headerMappings).length > 0;
-    // Check if headerMapping is defined if not the headers sould be the same so we can still continue
+    // Check if headerMapping is defined if not the headers should be the same so we can still continue
     if (!hasHeaders) {
       context.log += 'No headerMapping defined, using default headers.\n';
     } else {
       context.log += 'Header mapping defined, using custom headers.\n';
     }
-
     try {
-      await this.processCSV(channel, context, await this.downloadCSV(channel, context), language);
-      logger.info("FTP channel processing complete", { channelId: channel.id });
-      await this.finishExecution(channel, chanExec, 2, context.log);
+      var path : string = await this.downloadCSV(channel, context);
+      try {
+        await this.processCSV(channel, context, path, language);
+        logger.info("FTP channel processing complete", { channelId: channel.id });
+        await this.finishExecution(channel, chanExec, 2, context.log);
+      } catch (err: any) {
+        logger.error('Error in FTP channel processing', err);
+        context.log += 'Error running channel - ' + (err.message || err);
+        await this.finishExecution(channel, chanExec, 3, context.log);
+      }
     } catch (err: any) {
       logger.error('Error in FTP channel processing', err);
       context.log += 'Error running channel - ' + (err.message || err);
@@ -60,7 +65,7 @@ export class FTPChannelHandler extends ChannelHandler {
    * Generate a CSV from local items, then upload via SFTP using ssh2-sftp-client.
    */
   private async downloadCSV(channel: Channel, context: FTPJobContext): Promise<string> {
-    let constLocalFilePath = '/TEMP/FTP/';
+    var constLocalFilePath :string =  process.env.FTP_DOWNLOAD_PATH as string;
     if (!fs.existsSync(constLocalFilePath)) {
       fs.mkdirSync(constLocalFilePath, { recursive: true });
     }
@@ -68,7 +73,7 @@ export class FTPChannelHandler extends ChannelHandler {
     //logger.info(JSON.stringify(channel));
     const remoteDir = channel.config.ftpRemoteDir || '/';
     const remoteFilePath = path.posix.join(remoteDir, channel.config.remoteFilename || 'test.csv');
-    const localFilePath = path.join("/TEMP/FTP/", `import_${Date.now()}.csv`);
+    const localFilePath = path.join(constLocalFilePath, `import_${Date.now()}.csv`);
 
     try {
       await this.sftpClient.connect({

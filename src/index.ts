@@ -61,6 +61,7 @@ if (process.env.OPENPIM_DATABASE_USER) process.env.DATABASE_USER = process.env.O
 if (process.env.OPENPIM_DATABASE_PASSWORD) process.env.DATABASE_PASSWORD = process.env.OPENPIM_DATABASE_PASSWORD
 if (process.env.OPENPIM_AUDIT_URL) process.env.AUDIT_URL = process.env.OPENPIM_AUDIT_URL
 if (process.env.OPENPIM_ENABLE_METRICS) isMetrics = process.env.OPENPIM_ENABLE_METRICS === 'true'
+if (process.env.FTP_DOWNLOAD_PATH) process.env.FTP_DOWNLOAD_PATH = process.env.FTP_DOWNLOAD_PATH ; else process.env.FTP_DOWNLOAD_PATH = '/tmp'
 
 dotenv.config();
 const app = express();
